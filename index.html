@@ -1,9 +1,10 @@
 <div id="app">
 
-  <!-- SIDEB="toggleSidebar">☰</button>  <!-- SIDEBAR -->
+  <!-- ✅ TOP COLLAPSIBLE SIDEBAR -->
+  <div id="sidebar">
+    <button id="toggleSidebar">☰ Controls</button>
 
     <div id="controls">
-      <h3>Controls</h3>
 
       <div class="control-group">
         <label><b>Time (Year)</b></label>
@@ -15,7 +16,37 @@
         <button id="play">▶ Play</button>
       </div>
 
-      <!-- ✅ LOCATION SELECTOR -->
+      <!-- ✅ Pope selector -->
+      <div class="control-group">
+        <label><b>Pope</b></label>
+        <select id="popeFilter">
+          <option value="all">All</option>
+          <option>Paul V</option>
+          <option>Gregory XV</option>
+          <option>Urban VIII</option>
+          <option>Innocent X</option>
+          <option>Alexander VII</option>
+          <option>Clement IX</option>
+          <option>Clement X</option>
+          <option>Innocent XI</option>
+        </select>
+      </div>
+
+      <!-- ✅ Region selector -->
+      <div class="control-group">
+        <label><b>Region</b></label>
+        <select id="regionFilter">
+          <option value="all">All</option>
+          <option>North Africa</option>
+          <option>Ottoman Core</option>
+          <option>Balkans</option>
+          <option>Anatolia</option>
+          <option>Aegean</option>
+          <option>Levant</option>
+        </select>
+      </div>
+
+      <!-- ✅ Location selector -->
       <div class="control-group">
         <label><b>Location</b></label>
         <select id="locationFilter">
@@ -23,45 +54,47 @@
         </select>
       </div>
 
-      <div class="control-group">
-        <label><b>Map Style</b></label>
-        <select id="basemap">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-      </div>
-
     </div>
   </div>
 
+  <!-- ✅ MAP -->
   <div id="map"></div>
 
-  <!-- ✅ DYNAMIC LEGEND -->
+  <!-- ✅ FIXED LEGEND -->
   <div id="legend"></div>
 
 </div>
 
 <style>
-#app { position: relative; width: 100%; height: 700px; }
-
-#sidebar {
-  position: absolute;
-  left: 0;
-  width: 240px;
-  height: 100%;
-  background: white;
-  z-index: 1000;
-  box-shadow: 2px 0 6px rgba(0,0,0,0.2);
-  overflow: hidden;
-  transition: width 0.3s;
+#app {
+  position: relative;
+  width: 100%;
+  height: 700px;
 }
 
-#sidebar.collapsed { width: 40px; }
-#sidebar.collapsed #controls { display: none; }
+/* ✅ TOP BAR STYLE */
+#sidebar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
 
-#controls { padding: 10px; }
+/* ✅ collapse */
+#controls {
+  padding: 10px;
+}
 
-.control-group { margin-bottom: 15px; }
+#sidebar.collapsed #controls {
+  display: none;
+}
+
+.control-group {
+  margin-bottom: 10px;
+}
 
 #toggleSidebar {
   width: 100%;
@@ -72,15 +105,16 @@
   cursor: pointer;
 }
 
+/* ✅ MAP BELOW TOP BAR */
 #map {
   position: absolute;
-  left: 240px;
+  top: 40px;
+  left: 0;
   right: 0;
-  top: 0;
   bottom: 0;
 }
-#sidebar.collapsed + #map { left: 40px; }
 
+/* ✅ LEGEND FIXED */
 #legend {
   position: absolute;
   bottom: 10px;
@@ -88,12 +122,15 @@
   background: white;
   padding: 10px;
   font-size: 12px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.2);
   max-height: 200px;
   overflow-y: auto;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
+  z-index: 1001; /* ✅ ensures always on top */
 }
 
-#legend div { margin-bottom: 4px; }
+#legend div {
+  margin-bottom: 4px;
+}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -103,34 +140,36 @@
 <script>
 window.addEventListener("load", function () {
 
-  let light = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-  let dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
+  const map = L.map('map').setView([38, 20], 4);
 
-  const map = L.map('map', { layers: [light] }).setView([38, 20], 4);
-  let currentBase = light;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    .addTo(map);
 
   let layer = L.layerGroup().addTo(map);
 
   const slider = document.getElementById("timeSlider");
   const yearLabel = document.getElementById("yearLabel");
   const playBtn = document.getElementById("play");
-  const baseSelect = document.getElementById("basemap");
+  const popeFilter = document.getElementById("popeFilter");
+  const regionFilter = document.getElementById("regionFilter");
   const locationFilter = document.getElementById("locationFilter");
   const legend = document.getElementById("legend");
 
   let data = [];
   let currentYear = 1600;
-  let playing = false;
+  let pope = "all";
+  let region = "all";
   let selectedLocation = "all";
+  let playing = false;
 
   let locationColors = {};
 
-  function getColor(location) {
-    if (!locationColors[location]) {
-      let hue = Object.keys(locationColors).length * 40;
-      locationColors[location] = `hsl(${hue}, 70%, 50%)`;
+  function getColor(loc) {
+    if (!locationColors[loc]) {
+      let index = Object.keys(locationColors).length;
+      locationColors[loc] = `hsl(${index * 40}, 70%, 50%)`;
     }
-    return locationColors[location];
+    return locationColors[loc];
   }
 
   Papa.parse(
@@ -142,7 +181,6 @@ window.addEventListener("load", function () {
       complete: function(results) {
         data = results.data;
 
-        // ✅ populate dropdown
         let locations = [...new Set(data.map(d => d.origin))].sort();
         locations.forEach(loc => {
           let opt = document.createElement("option");
@@ -163,9 +201,11 @@ window.addEventListener("load", function () {
     let groups = {};
 
     data.forEach(row => {
-      let year = parseInt(row.year);
-      if (isNaN(year) || year > currentYear) return;
+      let yr = parseInt(row.year);
+      if (isNaN(yr) || yr > currentYear) return;
 
+      if (pope !== "all" && row.pope !== pope) return;
+      if (region !== "all" && row.region !== region) return;
       if (selectedLocation !== "all" && row.origin !== selectedLocation) return;
 
       if (!groups[row.origin]) groups[row.origin] = [];
@@ -178,7 +218,6 @@ window.addEventListener("load", function () {
       let lon = parseFloat(group[0].lon);
       let color = getColor(origin);
 
-      // ✅ LEGEND ENTRY
       legend.innerHTML += `<div><span style="color:${color}">●</span> ${origin}</div>`;
 
       let center = L.circleMarker([lat, lon], {
@@ -186,8 +225,7 @@ window.addEventListener("load", function () {
         color: color
       }).addTo(layer);
 
-      center.bindTooltip(`${origin} (${group.length})`);
-
+      center.bindTooltip(origin + " (" + group.length + ")");
       center.on("click", () => map.setView([lat, lon], 6));
 
       let n = group.length;
@@ -201,18 +239,17 @@ window.addEventListener("load", function () {
         let newLon = lon + radius * Math.sin(angle);
 
         L.polyline([[lat, lon], [newLat, newLon]], {
-          color: color,
-          weight: 1
+          color: color
         }).addTo(layer);
 
         let marker = L.circleMarker([newLat, newLon], {
-          radius: 6,
+          radius: 5,
           color: color
         }).addTo(layer);
 
         marker.bindPopup(`
           <b>${row.name_original}</b><br>
-          Baptismal Name: ${row.name_baptismal}<br>
+          Baptismal: ${row.name_baptismal}<br>
           Year: ${row.year}<br>
           Pope: ${row.pope}<br>
           Origin: ${row.origin}<br>
@@ -227,6 +264,8 @@ window.addEventListener("load", function () {
   }
 
   slider.oninput = e => { currentYear = +e.target.value; draw(); };
+  popeFilter.onchange = e => { pope = e.target.value; draw(); };
+  regionFilter.onchange = e => { region = e.target.value; draw(); };
   locationFilter.onchange = e => { selectedLocation = e.target.value; draw(); };
 
   playBtn.onclick = function() {
@@ -246,16 +285,9 @@ window.addEventListener("load", function () {
     }
   };
 
-  baseSelect.onchange = function() {
-    map.removeLayer(currentBase);
-    currentBase = this.value === "dark" ? dark : light;
-    map.addLayer(currentBase);
-  };
-
   document.getElementById("toggleSidebar").onclick = function() {
     document.getElementById("sidebar").classList.toggle("collapsed");
   };
 
 });
 </script>
-  <div id="sidebar">
