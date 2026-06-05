@@ -1,10 +1,60 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Leaflet Map Test</title>
+<div id="app">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <!-- ✅ SIDEBAR -->
+  <div id="sidebar">
+    <h3>Controls</h3>
+
+    <div class="control-group">
+      <label><b>Time (Year)</b></label><br>
+      <input type="range" id="timeSlider" min="1600" max="1690" step="1" value="1600">
+      <div id="yearLabel">1600</div>
+    </div>
+
+    <div class="control-group">
+      <button id="play">▶ Play</button>
+    </div>
+
+    <div class="control-group">
+      <label><b>Pope</b></label><br>
+      <select id="popeFilter">
+        <option value="all">All</option>
+        <option>Paul V</option>
+        <option>Gregory XV</option>
+        <option>Urban VIII</option>
+        <option>Innocent X</option>
+        <option>Alexander VII</option>
+        <option>Clement IX</option>
+        <option>Clement X</option>
+        <option>Innocent XI</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label><b>Region</b></label><br>
+      <select id="regionFilter">
+        <option value="all">All</option>
+        <option>North Africa</option>
+        <option>Ottoman Core</option>
+        <option>Balkans</option>
+        <option>Anatolia</option>
+        <option>Aegean</option>
+        <option>Levant</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ✅ MAP -->
+  <div id="map"></div>
+
+  <!-- ✅ LEGEND -->
+  <div id="legend">
+    <b>Legend</b><br>
+    📍 Center = origin<br>
+    ● Individuals<br>
+    Lines = connections
+  </div>
+
+</div>
 
 <style>
 #app {
@@ -13,124 +63,184 @@
   height: 700px;
 }
 
+/* ✅ SIDEBAR FIXED + CLEAN */
 #sidebar {
   position: absolute;
   left: 0;
-  width: 200px;
+  top: 0;
+  width: 220px;
   height: 100%;
   background: white;
-  padding: 10px;
+  padding: 15px;
   z-index: 1000;
+  box-shadow: 2px 0 6px rgba(0,0,0,0.2);
+  font-size: 14px;
 }
 
+/* ✅ spacing fix */
+.control-group {
+  margin-bottom: 15px;
+}
+
+/* ✅ MAP */
 #map {
   position: absolute;
-  left: 200px;
+  left: 220px;
   right: 0;
   top: 0;
   bottom: 0;
 }
+
+/* ✅ LEGEND */
+#legend {
+  position: absolute;
+  bottom: 15px;
+  right: 15px;
+  background: white;
+  padding: 10px;
+  font-size: 12px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.2);
+}
+
+/* ✅ inputs full width */
+#sidebar select,
+#sidebar input,
+#sidebar button {
+  width: 100%;
+}
 </style>
-</head>
 
-<body>
-
-<div id="app">
-  <div id="sidebar">
-    <h3>Controls</h3>
-
-    <label><b>Time</b></label>
-    <input type="range" id="slider" min="1600" max="1690" value="1600">
-    <div id="label">1600</div>
-  </div>
-
-  <div id="map"></div>
-</div>
+<!-- ✅ LIBRARIES (CORRECT) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
-const map = L.map('map').setView([38, 20], 4);
+window.addEventListener("load", function () {
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+  const map = L.map('map').setView([38, 20], 4);
 
-let layer = L.layerGroup().addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+    .addTo(map);
 
-let currentYear = 1600;
-let data = [];
+  let layer = L.layerGroup().addTo(map);
 
-const slider = document.getElementById("slider");
-const label = document.getElementById("label");
+  const slider = document.getElementById("timeSlider");
+  const yearLabel = document.getElementById("yearLabel");
+  const playBtn = document.getElementById("play");
+  const popeFilter = document.getElementById("popeFilter");
+  const regionFilter = document.getElementById("regionFilter");
 
-Papa.parse(
-  "https://raw.githubusercontent.com/emhcais/timeslidermap/refs/heads/main/kepler_radial_layout.csv",
-  {
-    download: true,
-    header: true,
-    complete: function(results) {
-      data = results.data;
-      draw();
+  let data = [];
+  let currentYear = 1600;
+  let pope = "all";
+  let region = "all";
+  let playing = false;
+
+  Papa.parse(
+    "https://raw.githubusercontent.com/emhcais/timeslidermap/main/kepler_radial_layout.csv",
+    {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        data = results.data;
+        draw();
+      }
     }
-  }
-);
+  );
 
-function draw() {
-  layer.clearLayers();
+  function draw() {
+    layer.clearLayers();
 
-  let groups = {};
+    let groups = {};
 
-  data.forEach(row => {
-    let year = parseInt(row.year);
-    if (isNaN(year) || year > currentYear) return;
+    data.forEach(row => {
+      let year = parseInt(row.year);
+      if (isNaN(year)) return;
 
-    if (!groups[row.origin]) groups[row.origin] = [];
-    groups[row.origin].push(row);
-  });
+      if (year > currentYear) return;
+      if (pope !== "all" && row.pope !== pope) return;
+      if (region !== "all" && row.region !== region) return;
 
-  Object.values(groups).forEach(group => {
-
-    let lat = parseFloat(group[0].lat);
-    let lon = parseFloat(group[0].lon);
-
-    let center = L.circleMarker([lat, lon], {
-      radius: 6,
-      color: "black"
-    }).addTo(layer);
-
-    center.bindTooltip(group[0].origin + " (" + group.length + ")");
-
-    let radius = 0.3;
-    let n = group.length;
-
-    group.forEach((row, i) => {
-
-      let angle = (2 * Math.PI * i) / n;
-
-      let newLat = lat + radius * Math.cos(angle);
-      let newLon = lon + radius * Math.sin(angle);
-
-      L.polyline([[lat, lon], [newLat, newLon]], {
-        color: "#888"
-      }).addTo(layer);
-
-      let marker = L.circleMarker([newLat, newLon], {
-        radius: 5,
-        color: "orange"
-      }).addTo(layer);
-
-      marker.bindPopup(row.name_original + "<br>" + row.year);
+      if (!groups[row.origin]) groups[row.origin] = [];
+      groups[row.origin].push(row);
     });
-  });
 
-  label.innerText = currentYear;
-}
+    Object.values(groups).forEach(group => {
 
-slider.addEventListener("input", function(e){
-  currentYear = parseInt(e.target.value);
-  draw();
+      let lat = parseFloat(group[0].lat);
+      let lon = parseFloat(group[0].lon);
+      let count = group.length;
+
+      // center
+      let center = L.circleMarker([lat, lon], {
+        radius: 6,
+        color: "black",
+        fillOpacity: 1
+      }).addTo(layer);
+
+      center.bindTooltip(`${group[0].origin} (${count})`);
+
+      let radius = 0.3;
+
+      group.forEach((row, i) => {
+
+        let angle = (2 * Math.PI * i) / count;
+
+        let newLat = lat + radius * Math.cos(angle);
+        let newLon = lon + radius * Math.sin(angle);
+
+        // line
+        L.polyline([[lat, lon], [newLat, newLon]], {
+          color: "#888"
+        }).addTo(layer);
+
+        // node
+        let marker = L.circleMarker([newLat, newLon], {
+          radius: 5,
+          color: "orange"
+        }).addTo(layer);
+
+        marker.bindPopup(
+          `<b>${row.name_original}</b><br>
+           Year: ${row.year}<br>
+           Origin: ${row.origin}`
+        );
+      });
+
+    });
+
+    yearLabel.innerText = currentYear;
+  }
+
+  slider.oninput = function(e) {
+    currentYear = parseInt(e.target.value);
+    draw();
+  };
+
+  playBtn.onclick = function() {
+    playing = !playing;
+    this.innerText = playing ? "⏸ Pause" : "▶ Play";
+
+    if (playing) {
+      let interval = setInterval(() => {
+        if (!playing) return clearInterval(interval);
+
+        currentYear++;
+        if (currentYear > 1690) currentYear = 1600;
+
+        slider.value = currentYear;
+        draw();
+
+      }, 600);
+    }
+  };
+
+  popeFilter.onchange = e => { pope = e.target.value; draw(); };
+  regionFilter.onchange = e => { region = e.target.value; draw(); };
+
 });
 </script>
-
-</body>
-</html>
+``
