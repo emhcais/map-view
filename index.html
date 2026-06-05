@@ -1,8 +1,7 @@
 <div id="app">
 
   <!-- SIDEBAR -->
-  <div id="sidebar">
-    <button id="toggleSidebar">☰</button>
+  <div">☰</button>  <div id="sidebar">
 
     <div id="controls">
       <h3>Controls</h3>
@@ -60,27 +59,12 @@
           <option value="dark2">Dark 2</option>
         </select>
       </div>
-
     </div>
   </div>
 
   <div id="map"></div>
   <div id="legend"></div>
 
-</div>
-
-<!-- DESCRIPTION -->
-<div id="map-description">
-  <h3>About This Map</h3>
-  <p>
-    This interactive map visualizes the baptisms of Muslim converts in Rome between 1600 and 1690.
-    Each origin is shown as a central node, with individual baptisms radiating outward.
-  </p>
-  <ul>
-    <li>Use the timeline to explore change over time.</li>
-    <li>Filter by Pope, region, or location.</li>
-    <li>Click nodes to zoom and view details.</li>
-  </ul>
 </div>
 
 <style>
@@ -123,9 +107,7 @@ body { font-family: Arial, Helvetica, sans-serif; }
   bottom: 0;
 }
 
-#sidebar.collapsed + #map {
-  left: 40px;
-}
+#sidebar.collapsed + #map { left: 40px; }
 
 #legend {
   position: absolute;
@@ -141,6 +123,7 @@ body { font-family: Arial, Helvetica, sans-serif; }
 }
 </style>
 
+<!-- ✅ LIBRARIES -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -148,7 +131,7 @@ body { font-family: Arial, Helvetica, sans-serif; }
 <script>
 window.addEventListener("load", function () {
 
-  // ✅ MAPS
+  // ✅ BASEMAPS
   const arabic = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png');
   const dark1 = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
   const dark2 = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png');
@@ -159,24 +142,18 @@ window.addEventListener("load", function () {
   let currentBase = arabic;
   let layer = L.layerGroup().addTo(map);
 
-  // ✅ ICONS
+  // ✅ HUB ICON (UNCHANGED)
   const hubIcon = L.icon({
     iconUrl: "https://cdn-icons-png.flaticon.com/512/4856/4856582.png",
     iconSize: [34,34],
     iconAnchor: [17,34]
   });
 
-  const nodeIcon = L.icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
-    iconSize: [18,18],
-    iconAnchor: [9,18]
-  });
-
   let data = [];
   let currentYear = 1600;
   let pope="all", region="all", locSel="all";
-  let colors = {};
 
+  let colors = {};
   function getColor(loc){
     if(!colors[loc]){
       let i = Object.keys(colors).length;
@@ -233,7 +210,7 @@ window.addEventListener("load", function () {
 
       legend.innerHTML += `<div><span style="color:${color}">●</span> ${origin}</div>`;
 
-      // HUB
+      // ✅ HUB (PIN)
       let center = L.marker([lat,lon],{icon:hubIcon})
         .addTo(layer)
         .bindTooltip(origin+" ("+group.length+")");
@@ -244,14 +221,22 @@ window.addEventListener("load", function () {
       let radius=0.5;
 
       group.forEach((row,i)=>{
+
         let angle=(2*Math.PI*i)/n;
 
         let newLat=lat+radius*Math.cos(angle);
         let newLon=lon+radius*Math.sin(angle);
 
+        // ✅ LINE
         L.polyline([[lat,lon],[newLat,newLon]],{color:color}).addTo(layer);
 
-        let m=L.marker([newLat,newLon],{icon:nodeIcon}).addTo(layer);
+        // ✅ NODE = COLORED CIRCLE
+        let m=L.circleMarker([newLat,newLon],{
+          radius:5,
+          color:color,
+          fillColor:color,
+          fillOpacity:1
+        }).addTo(layer);
 
         m.bindPopup(`
           <b>Name:</b> ${row.name_original || "N/A"}<br>
@@ -270,6 +255,7 @@ window.addEventListener("load", function () {
     yearLabel.innerText=`${currentYear} (${decade}s)`;
   }
 
+  // ✅ CONTROLS
   timeSlider.oninput=e=>{currentYear=+e.target.value;draw();};
   popeFilter.onchange=e=>{pope=e.target.value;draw();};
   regionFilter.onchange=e=>{region=e.target.value;draw();};
@@ -282,13 +268,11 @@ window.addEventListener("load", function () {
   };
 
   play.onclick=function(){
-    let playing=true;
     let i=setInterval(()=>{
       currentYear++;
       if(currentYear>1690) currentYear=1600;
       timeSlider.value=currentYear;
       draw();
-      if(!playing) clearInterval(i);
     },600);
   };
 
