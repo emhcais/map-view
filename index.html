@@ -18,7 +18,7 @@
       </div>
 
       <div class="control-group">
-        <label><b>Select a Pope</b></label>
+        <label><b>Pope</b></label>
         <select id="popeFilter">
           <option value="all">All</option>
           <option>Paul V</option>
@@ -33,7 +33,7 @@
       </div>
 
       <div class="control-group">
-        <label><b>Select a Region</b></label>
+        <label><b>Region</b></label>
         <select id="regionFilter">
           <option value="all">All</option>
           <option>North Africa</option>
@@ -46,18 +46,18 @@
       </div>
 
       <div class="control-group">
-        <label><b>Select a Location</b></label>
+        <label><b>Location</b></label>
         <select id="locationFilter">
           <option value="all">All</option>
         </select>
       </div>
 
       <div class="control-group">
-        <label><b>Select a Map Type</b></label>
+        <label><b>Map Style</b></label>
         <select id="basemap">
-          <option value="arabic">Default</option>
-          <option value="dark1">Dark</option>
-          <option value="dark2">Arabic Place Names</option>
+          <option value="arabic">Arabic (Default)</option>
+          <option value="dark1">Dark 1</option>
+          <option value="dark2">Dark 2</option>
         </select>
       </div>
 
@@ -73,13 +73,13 @@
 <div id="map-description">
   <h3>About This Map</h3>
   <p>
-    This interactive map visualizes North African Captives in the Mediterranean Region and Europe from 1600 to 1690.
-   Click on the branch to pop up details about each individual. It includes each individual's name, and, when available, their baptismal name, place of captivity as the location, the current Pope's name, and the source.
+    This interactive map visualizes the baptisms of Muslim converts in Rome between 1600 and 1690.
+    Each origin is shown as a central node, with individual baptisms radiating outward.
   </p>
   <ul>
     <li>Use the timeline to explore change over time.</li>
-    <li>Filter by Pope, Region, or Location.</li>
-    <li>Click on the location to zoom and view details.</li>
+    <li>Filter by Pope, region, or location.</li>
+    <li>Click nodes to zoom and view details.</li>
   </ul>
 </div>
 
@@ -96,8 +96,8 @@ body { font-family: Arial, Helvetica, sans-serif; }
   background: white;
   z-index: 1000;
   box-shadow: 2px 0 6px rgba(0,0,0,0.2);
-  transition: width 0.3s;
   overflow: hidden;
+  transition: width 0.3s;
 }
 
 #sidebar.collapsed { width: 40px; }
@@ -112,6 +112,7 @@ body { font-family: Arial, Helvetica, sans-serif; }
   background: #333;
   color: white;
   border: none;
+  cursor: pointer;
 }
 
 #map {
@@ -122,7 +123,9 @@ body { font-family: Arial, Helvetica, sans-serif; }
   bottom: 0;
 }
 
-#sidebar.collapsed + #map { left: 40px; }
+#sidebar.collapsed + #map {
+  left: 40px;
+}
 
 #legend {
   position: absolute;
@@ -133,6 +136,7 @@ body { font-family: Arial, Helvetica, sans-serif; }
   font-size: 12px;
   max-height: 200px;
   overflow-y: auto;
+  box-shadow: 0 0 6px rgba(0,0,0,0.2);
   z-index: 1001;
 }
 </style>
@@ -144,6 +148,7 @@ body { font-family: Arial, Helvetica, sans-serif; }
 <script>
 window.addEventListener("load", function () {
 
+  // ✅ MAPS
   const arabic = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png');
   const dark1 = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
   const dark2 = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png');
@@ -154,17 +159,24 @@ window.addEventListener("load", function () {
   let currentBase = arabic;
   let layer = L.layerGroup().addTo(map);
 
-  const icon = L.icon({
-    iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png",
-    iconSize:[22,22],
-    iconAnchor:[11,11]
+  // ✅ ICONS
+  const hubIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/4856/4856582.png",
+    iconSize: [34,34],
+    iconAnchor: [17,34]
+  });
+
+  const nodeIcon = L.icon({
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
+    iconSize: [18,18],
+    iconAnchor: [9,18]
   });
 
   let data = [];
   let currentYear = 1600;
   let pope="all", region="all", locSel="all";
-
   let colors = {};
+
   function getColor(loc){
     if(!colors[loc]){
       let i = Object.keys(colors).length;
@@ -221,7 +233,9 @@ window.addEventListener("load", function () {
 
       legend.innerHTML += `<div><span style="color:${color}">●</span> ${origin}</div>`;
 
-      let center = L.marker([lat,lon],{icon:icon}).addTo(layer)
+      // HUB
+      let center = L.marker([lat,lon],{icon:hubIcon})
+        .addTo(layer)
         .bindTooltip(origin+" ("+group.length+")");
 
       center.on("click",()=>map.setView([lat,lon],6));
@@ -237,9 +251,7 @@ window.addEventListener("load", function () {
 
         L.polyline([[lat,lon],[newLat,newLon]],{color:color}).addTo(layer);
 
-        let m=L.circleMarker([newLat,newLon],{
-          radius:5,color:color
-        }).addTo(layer);
+        let m=L.marker([newLat,newLon],{icon:nodeIcon}).addTo(layer);
 
         m.bindPopup(`
           <b>Name:</b> ${row.name_original || "N/A"}<br>
@@ -273,7 +285,7 @@ window.addEventListener("load", function () {
     let playing=true;
     let i=setInterval(()=>{
       currentYear++;
-      if(currentYear>1690){currentYear=1600;}
+      if(currentYear>1690) currentYear=1600;
       timeSlider.value=currentYear;
       draw();
       if(!playing) clearInterval(i);
