@@ -1,27 +1,63 @@
-<div id="app"><div  <!-- SIDEBAR -->
+<div id="app">
+
+  <!-- SIDEBAR -->
   <div id="sidebar">
     <button id="toggleSidebar">☰</button>
 
     <div id="controls">
       <h3>Controls</h3>
 
+      <!-- TIME -->
       <div class="control-group">
         <label><b>Time (Year)</b></label><br>
-        <input type="range" id="timeSlider" min="1600" max="1690" step="1" value="1600">
+        <input type="range" id="timeSlider" min="1600" max="1690" value="1600">
         <div id="yearLabel">1600</div>
       </div>
 
+      <!-- PLAY -->
       <div class="control-group">
         <button id="play">▶ Play</button>
       </div>
 
+      <!-- POPE FILTER -->
       <div class="control-group">
-        <label><b>Map Style</b></label><br>
+        <label><b>Pope</b></label>
+        <select id="popeFilter">
+          <option value="all">All</option>
+          <option>Paul V</option>
+          <option>Gregory XV</option>
+          <option>Urban VIII</option>
+          <option>Innocent X</option>
+          <option>Alexander VII</option>
+          <option>Clement IX</option>
+          <option>Clement X</option>
+          <option>Innocent XI</option>
+        </select>
+      </div>
+
+      <!-- REGION FILTER -->
+      <div class="control-group">
+        <label><b>Region</b></label>
+        <select id="regionFilter">
+          <option value="all">All</option>
+          <option>North Africa</option>
+          <option>Ottoman Core</option>
+          <option>Balkans</option>
+          <option>Anatolia</option>
+          <option>Aegean</option>
+          <option>Levant</option>
+        </select>
+      </div>
+
+      <!-- MAP STYLE -->
+      <div class="control-group">
+        <label><b>Map Style</b></label>
         <select id="basemap">
           <option value="light">Light</option>
           <option value="dark">Dark</option>
         </select>
       </div>
+
     </div>
   </div>
 
@@ -48,7 +84,7 @@
   height: 700px;
 }
 
-/* sidebar */
+/* SIDEBAR */
 #sidebar {
   position: absolute;
   left: 0;
@@ -58,12 +94,20 @@
   z-index: 1000;
   box-shadow: 2px 0 6px rgba(0,0,0,0.2);
   transition: width 0.3s;
+  overflow: hidden;   /* ✅ FIX: prevents overflow */
 }
 
+/* COLLAPSED STATE */
 #sidebar.collapsed {
   width: 40px;
 }
 
+/* ✅ HIDE INTERNAL CONTROLS WHEN COLLAPSED */
+#sidebar.collapsed #controls {
+  display: none;
+}
+
+/* CONTROLS */
 #controls {
   padding: 10px;
 }
@@ -81,7 +125,7 @@
   cursor: pointer;
 }
 
-/* map */
+/* MAP */
 #map {
   position: absolute;
   left: 240px;
@@ -95,7 +139,7 @@
   left: 40px;
 }
 
-/* legend */
+/* LEGEND */
 #legend {
   position: absolute;
   bottom: 15px;
@@ -118,7 +162,6 @@
 <script>
 window.addEventListener("load", function () {
 
-  // basemaps
   let light = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
   let dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
 
@@ -130,10 +173,14 @@ window.addEventListener("load", function () {
   const slider = document.getElementById("timeSlider");
   const yearLabel = document.getElementById("yearLabel");
   const playBtn = document.getElementById("play");
+  const popeFilter = document.getElementById("popeFilter");
+  const regionFilter = document.getElementById("regionFilter");
   const baseSelect = document.getElementById("basemap");
 
   let data = [];
   let currentYear = 1600;
+  let pope = "all";
+  let region = "all";
   let playing = false;
 
   const colors = {
@@ -145,7 +192,6 @@ window.addEventListener("load", function () {
     "Levant": "#ffff33"
   };
 
-  // load CSV
   Papa.parse(
     "https://raw.githubusercontent.com/emhcais/timeslidermap/main/kepler_radial_layout.csv",
     {
@@ -165,8 +211,12 @@ window.addEventListener("load", function () {
     let groups = {};
 
     data.forEach(row => {
-      let year = parseInt(row.year);
-      if (isNaN(year) || year > currentYear) return;
+      let yr = parseInt(row.year);
+      if (isNaN(yr)) return;
+
+      if (yr > currentYear) return;
+      if (pope !== "all" && row.pope !== pope) return;
+      if (region !== "all" && row.region !== region) return;
 
       if (!groups[row.origin]) groups[row.origin] = [];
       groups[row.origin].push(row);
@@ -176,38 +226,22 @@ window.addEventListener("load", function () {
 
       let lat = parseFloat(group[0].lat);
       let lon = parseFloat(group[0].lon);
-      let count = group.length;
 
-      // ✅ center node
       let center = L.circleMarker([lat, lon], {
         radius: 6,
         color: "black"
       }).addTo(layer);
 
-      // ✅ hover label (visible above cluster)
-      let label = L.tooltip({
-        direction: "top",
-        offset: [0, -10],
-        opacity: 1
-      }).setContent(`${group[0].origin} (${count})`);
+      center.bindTooltip(group[0].origin + " (" + group.length + ")");
 
-      center.on("mouseover", () => {
-        label.setLatLng([lat, lon]);
-        map.openTooltip(label);
-      });
-
-      center.on("mouseout", () => {
-        map.closeTooltip(label);
-      });
-
-      // ✅ zoom on click
       center.on("click", () => map.setView([lat, lon], 6));
 
+      let n = group.length;
       let radius = 0.3;
 
       group.forEach((row, i) => {
 
-        let angle = (2 * Math.PI * i) / count;
+        let angle = (2 * Math.PI * i) / n;
 
         let newLat = lat + radius * Math.cos(angle);
         let newLon = lon + radius * Math.sin(angle);
@@ -217,35 +251,15 @@ window.addEventListener("load", function () {
         }).addTo(layer);
 
         let marker = L.circleMarker([newLat, newLon], {
-          radius: 6,
-          color: colors[row.region] || "orange",
-          fillOpacity: 0.9
+          radius: 5,
+          color: colors[row.region] || "orange"
         }).addTo(layer);
 
-        // ✅ FULL POPUP
-        marker.bindPopup(`
-          <b>${row.name_original}</b><br>
-          Baptismal Name: ${row.name_baptismal}<br>
-          Year: ${row.year}<br>
-          Pope: ${row.pope}<br>
-          Origin: ${row.origin}<br>
-          Region: ${row.region}
-        `);
+        marker.bindPopup(
+          `<b>${row.name_original}</b><br>${row.year}<br>${row.region}`
+        );
 
-        // ✅ zoom on individual click
-        marker.on("click", () => {
-          map.setView([newLat, newLon], 7);
-        });
-
-        // ✅ also trigger hover label from spokes
-        marker.on("mouseover", () => {
-          label.setLatLng([lat, lon]);
-          map.openTooltip(label);
-        });
-
-        marker.on("mouseout", () => {
-          map.closeTooltip(label);
-        });
+        marker.on("click", () => map.setView([newLat, newLon], 7));
       });
 
     });
@@ -253,20 +267,23 @@ window.addEventListener("load", function () {
     yearLabel.innerText = currentYear;
   }
 
-  // slider
-  slider.oninput = e => {
-    currentYear = parseInt(e.target.value);
-    draw();
+  slider.oninput = e => { currentYear = +e.target.value; draw(); };
+  popeFilter.onchange = e => { pope = e.target.value; draw(); };
+  regionFilter.onchange = e => { region = e.target.value; draw(); };
+
+  baseSelect.onchange = function() {
+    map.removeLayer(currentBase);
+    currentBase = this.value === "dark" ? dark : light;
+    map.addLayer(currentBase);
   };
 
-  // play animation
   playBtn.onclick = function() {
     playing = !playing;
     this.innerText = playing ? "⏸ Pause" : "▶ Play";
 
     if (playing) {
-      let interval = setInterval(() => {
-        if (!playing) return clearInterval(interval);
+      let i = setInterval(() => {
+        if (!playing) return clearInterval(i);
 
         currentYear++;
         if (currentYear > 1690) currentYear = 1600;
@@ -278,18 +295,10 @@ window.addEventListener("load", function () {
     }
   };
 
-  // basemap toggle
-  baseSelect.onchange = function() {
-    map.removeLayer(currentBase);
-    currentBase = this.value === "dark" ? dark : light;
-    map.addLayer(currentBase);
-  };
-
-  // collapsible sidebar
   document.getElementById("toggleSidebar").onclick = function() {
     document.getElementById("sidebar").classList.toggle("collapsed");
   };
 
 });
 </script>
-
+``
