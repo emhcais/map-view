@@ -1,7 +1,8 @@
 <div id="app">
 
   <!-- SIDEBAR -->
-  <div">☰</button>  <div id="sidebar">
+  <div id="sidebar">
+    <button id="toggleSidebar">☰</button>
 
     <div id="controls">
       <h3>Controls</h3>
@@ -17,7 +18,7 @@
       </div>
 
       <div class="control-group">
-        <label><b>Pope</b></label>
+        <label><b>Select a Pope</b></label>
         <select id="popeFilter">
           <option value="all">All</option>
           <option>Paul V</option>
@@ -32,7 +33,7 @@
       </div>
 
       <div class="control-group">
-        <label><b>Region</b></label>
+        <label><b>Select a Region</b></label>
         <select id="regionFilter">
           <option value="all">All</option>
           <option>North Africa</option>
@@ -45,20 +46,21 @@
       </div>
 
       <div class="control-group">
-        <label><b>Location</b></label>
+        <label><b>Select a Location</b></label>
         <select id="locationFilter">
           <option value="all">All</option>
         </select>
       </div>
 
       <div class="control-group">
-        <label><b>Map Style</b></label>
+        <label><b>Select a Map Type</b></label>
         <select id="basemap">
-          <option value="arabic">Arabic (Default)</option>
-          <option value="dark1">Dark 1</option>
-          <option value="dark2">Dark 2</option>
+          <option value="arabic">Default</option>
+          <option value="dark1">Dark</option>
+          <option value="dark2">Arabic Place Names</option>
         </select>
       </div>
+
     </div>
   </div>
 
@@ -66,6 +68,7 @@
   <div id="legend"></div>
 
 </div>
+
 <!-- DESCRIPTION -->
 <div id="map-description">
   <h3>About This Map</h3>
@@ -79,6 +82,7 @@
     <li>Click on the location to zoom and view details.</li>
   </ul>
 </div>
+
 <style>
 body { font-family: Arial, Helvetica, sans-serif; }
 
@@ -92,8 +96,8 @@ body { font-family: Arial, Helvetica, sans-serif; }
   background: white;
   z-index: 1000;
   box-shadow: 2px 0 6px rgba(0,0,0,0.2);
-  overflow: hidden;
   transition: width 0.3s;
+  overflow: hidden;
 }
 
 #sidebar.collapsed { width: 40px; }
@@ -108,7 +112,6 @@ body { font-family: Arial, Helvetica, sans-serif; }
   background: #333;
   color: white;
   border: none;
-  cursor: pointer;
 }
 
 #map {
@@ -130,12 +133,10 @@ body { font-family: Arial, Helvetica, sans-serif; }
   font-size: 12px;
   max-height: 200px;
   overflow-y: auto;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
   z-index: 1001;
 }
 </style>
 
-<!-- ✅ LIBRARIES -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
@@ -143,7 +144,6 @@ body { font-family: Arial, Helvetica, sans-serif; }
 <script>
 window.addEventListener("load", function () {
 
-  // ✅ BASEMAPS
   const arabic = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png');
   const dark1 = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
   const dark2 = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png');
@@ -154,11 +154,10 @@ window.addEventListener("load", function () {
   let currentBase = arabic;
   let layer = L.layerGroup().addTo(map);
 
-  // ✅ HUB ICON (UNCHANGED)
-  const hubIcon = L.icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/4856/4856582.png",
-    iconSize: [34,34],
-    iconAnchor: [17,34]
+  const icon = L.icon({
+    iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png",
+    iconSize:[22,22],
+    iconAnchor:[11,11]
   });
 
   let data = [];
@@ -222,32 +221,24 @@ window.addEventListener("load", function () {
 
       legend.innerHTML += `<div><span style="color:${color}">●</span> ${origin}</div>`;
 
-      // ✅ HUB (PIN)
-      let center = L.marker([lat,lon],{icon:hubIcon})
-        .addTo(layer)
+      let center = L.marker([lat,lon],{icon:icon}).addTo(layer)
         .bindTooltip(origin+" ("+group.length+")");
 
-      center.on("click",()=>map.setView([lat,lon],7));
+      center.on("click",()=>map.setView([lat,lon],6));
 
       let n=group.length;
       let radius=0.5;
 
       group.forEach((row,i)=>{
-
         let angle=(2*Math.PI*i)/n;
 
         let newLat=lat+radius*Math.cos(angle);
         let newLon=lon+radius*Math.sin(angle);
 
-        // ✅ LINE
         L.polyline([[lat,lon],[newLat,newLon]],{color:color}).addTo(layer);
 
-        // ✅ NODE = COLORED CIRCLE
         let m=L.circleMarker([newLat,newLon],{
-          radius:5,
-          color:color,
-          fillColor:color,
-          fillOpacity:5
+          radius:5,color:color
         }).addTo(layer);
 
         m.bindPopup(`
@@ -259,7 +250,7 @@ window.addEventListener("load", function () {
           <b>Region:</b> ${row.region || "N/A"}
         `);
 
-        m.on("click",()=>map.setView([newLat,newLon],10));
+        m.on("click",()=>map.setView([newLat,newLon],7));
       });
     });
 
@@ -267,7 +258,6 @@ window.addEventListener("load", function () {
     yearLabel.innerText=`${currentYear} (${decade}s)`;
   }
 
-  // ✅ CONTROLS
   timeSlider.oninput=e=>{currentYear=+e.target.value;draw();};
   popeFilter.onchange=e=>{pope=e.target.value;draw();};
   regionFilter.onchange=e=>{region=e.target.value;draw();};
@@ -280,11 +270,13 @@ window.addEventListener("load", function () {
   };
 
   play.onclick=function(){
+    let playing=true;
     let i=setInterval(()=>{
       currentYear++;
-      if(currentYear>1690) currentYear=1600;
+      if(currentYear>1690){currentYear=1600;}
       timeSlider.value=currentYear;
       draw();
+      if(!playing) clearInterval(i);
     },600);
   };
 
