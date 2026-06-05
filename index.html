@@ -146,7 +146,7 @@ body { font-family: Arial, Helvetica, sans-serif; }
 window.addEventListener("load", function () {
 
   const arabic = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png');
-  const dark1 = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
+  const dark1 = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png');
   const dark2 = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png');
 
   const map = L.map('map', { zoomControl:false, layers:[arabic] }).setView([38,20],4);
