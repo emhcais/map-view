@@ -9,7 +9,7 @@
       <h3>Controls</h3>
 
       <div class="control-group">
-        <label><b>Time</b></label>
+        <label><b>Duration</b></label>
         <input type="range" id="timeSlider" min="1600" max="1690" value="1600">
         <div id="yearLabel">1600</div>
       </div>
@@ -225,7 +225,7 @@ window.addEventListener("load", function () {
       let center = L.marker([lat,lon],{icon:icon}).addTo(layer)
         .bindTooltip(origin+" ("+group.length+")");
 
-      center.on("click",()=>map.setView([lat,lon],6));
+      center.on("click",()=>map.setView([lat,lon],8));
 
       let n=group.length;
       let radius=0.5;
@@ -251,7 +251,7 @@ window.addEventListener("load", function () {
           <b>Region:</b> ${row.region || "N/A"}
         `);
 
-        m.on("click",()=>map.setView([newLat,newLon],7));
+        m.on("click",()=>map.setView([newLat,newLon],10));
       });
     });
 
