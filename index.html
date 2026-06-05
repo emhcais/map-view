@@ -1,8 +1,9 @@
-<div id="app">
-
-  <!-- ✅ SIDEBAR -->
+<div id="app"><div  <!-- SIDEBAR -->
   <div id="sidebar">
-    <button id="h3>Controls</h3>    <button id="toggleSidebar">☰</button>
+    <button id="toggleSidebar">☰</button>
+
+    <div id="controls">
+      <h3>Controls</h3>
 
       <div class="control-group">
         <label><b>Time (Year)</b></label><br>
@@ -21,42 +22,13 @@
           <option value="dark">Dark</option>
         </select>
       </div>
-
-      <div class="control-group">
-        <label><b>Pope</b></label><br>
-        <select id="popeFilter">
-          <option value="all">All</option>
-          <option>Paul V</option>
-          <option>Gregory XV</option>
-          <option>Urban VIII</option>
-          <option>Innocent X</option>
-          <option>Alexander VII</option>
-          <option>Clement IX</option>
-          <option>Clement X</option>
-          <option>Innocent XI</option>
-        </select>
-      </div>
-
-      <div class="control-group">
-        <label><b>Region</b></label><br>
-        <select id="regionFilter">
-          <option value="all">All</option>
-          <option>North Africa</option>
-          <option>Ottoman Core</option>
-          <option>Balkans</option>
-          <option>Anatolia</option>
-          <option>Aegean</option>
-          <option>Levant</option>
-        </select>
-      </div>
-
     </div>
   </div>
 
-  <!-- ✅ MAP -->
+  <!-- MAP -->
   <div id="map"></div>
 
-  <!-- ✅ LEGEND -->
+  <!-- LEGEND -->
   <div id="legend">
     <b>Regions</b><br>
     <span style="color:#e41a1c">●</span> North Africa<br>
@@ -76,7 +48,7 @@
   height: 700px;
 }
 
-/* ✅ sidebar */
+/* sidebar */
 #sidebar {
   position: absolute;
   left: 0;
@@ -88,7 +60,6 @@
   transition: width 0.3s;
 }
 
-/* collapse */
 #sidebar.collapsed {
   width: 40px;
 }
@@ -110,7 +81,7 @@
   cursor: pointer;
 }
 
-/* ✅ map */
+/* map */
 #map {
   position: absolute;
   left: 240px;
@@ -124,7 +95,7 @@
   left: 40px;
 }
 
-/* ✅ legend */
+/* legend */
 #legend {
   position: absolute;
   bottom: 15px;
@@ -132,7 +103,6 @@
   background: white;
   padding: 10px;
   font-size: 12px;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
 }
 
 #sidebar select, #sidebar input, #sidebar button {
@@ -140,21 +110,19 @@
 }
 </style>
 
-<!-- ✅ LIBRARIES -->
+<!-- LIBRARIES -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
 window.addEventListener("load", function () {
 
-  // ✅ basemaps
+  // basemaps
   let light = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
   let dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
 
   const map = L.map('map', { layers: [light] }).setView([38, 20], 4);
-
   let currentBase = light;
 
   let layer = L.layerGroup().addTo(map);
@@ -162,17 +130,12 @@ window.addEventListener("load", function () {
   const slider = document.getElementById("timeSlider");
   const yearLabel = document.getElementById("yearLabel");
   const playBtn = document.getElementById("play");
-  const popeFilter = document.getElementById("popeFilter");
-  const regionFilter = document.getElementById("regionFilter");
   const baseSelect = document.getElementById("basemap");
 
   let data = [];
   let currentYear = 1600;
-  let pope = "all";
-  let region = "all";
   let playing = false;
 
-  // ✅ region colors
   const colors = {
     "North Africa": "#e41a1c",
     "Ottoman Core": "#377eb8",
@@ -182,6 +145,7 @@ window.addEventListener("load", function () {
     "Levant": "#ffff33"
   };
 
+  // load CSV
   Papa.parse(
     "https://raw.githubusercontent.com/emhcais/timeslidermap/main/kepler_radial_layout.csv",
     {
@@ -202,11 +166,7 @@ window.addEventListener("load", function () {
 
     data.forEach(row => {
       let year = parseInt(row.year);
-      if (isNaN(year)) return;
-
-      if (year > currentYear) return;
-      if (pope !== "all" && row.pope !== pope) return;
-      if (region !== "all" && row.region !== region) return;
+      if (isNaN(year) || year > currentYear) return;
 
       if (!groups[row.origin]) groups[row.origin] = [];
       groups[row.origin].push(row);
@@ -218,15 +178,30 @@ window.addEventListener("load", function () {
       let lon = parseFloat(group[0].lon);
       let count = group.length;
 
-      // ✅ center node (click → zoom)
+      // ✅ center node
       let center = L.circleMarker([lat, lon], {
         radius: 6,
         color: "black"
       }).addTo(layer);
 
-      center.on("click", () => map.setView([lat, lon], 6));
+      // ✅ hover label (visible above cluster)
+      let label = L.tooltip({
+        direction: "top",
+        offset: [0, -10],
+        opacity: 1
+      }).setContent(`${group[0].origin} (${count})`);
 
-      center.bindTooltip(`${group[0].origin} (${count})`);
+      center.on("mouseover", () => {
+        label.setLatLng([lat, lon]);
+        map.openTooltip(label);
+      });
+
+      center.on("mouseout", () => {
+        map.closeTooltip(label);
+      });
+
+      // ✅ zoom on click
+      center.on("click", () => map.setView([lat, lon], 6));
 
       let radius = 0.3;
 
@@ -241,15 +216,36 @@ window.addEventListener("load", function () {
           color: "#888"
         }).addTo(layer);
 
-        L.circleMarker([newLat, newLon], {
-          radius: 5,
+        let marker = L.circleMarker([newLat, newLon], {
+          radius: 6,
           color: colors[row.region] || "orange",
           fillOpacity: 0.9
-        }).bindPopup(`
+        }).addTo(layer);
+
+        // ✅ FULL POPUP
+        marker.bindPopup(`
           <b>${row.name_original}</b><br>
+          Baptismal Name: ${row.name_baptismal}<br>
           Year: ${row.year}<br>
+          Pope: ${row.pope}<br>
+          Origin: ${row.origin}<br>
           Region: ${row.region}
-        `).addTo(layer);
+        `);
+
+        // ✅ zoom on individual click
+        marker.on("click", () => {
+          map.setView([newLat, newLon], 7);
+        });
+
+        // ✅ also trigger hover label from spokes
+        marker.on("mouseover", () => {
+          label.setLatLng([lat, lon]);
+          map.openTooltip(label);
+        });
+
+        marker.on("mouseout", () => {
+          map.closeTooltip(label);
+        });
       });
 
     });
@@ -257,13 +253,13 @@ window.addEventListener("load", function () {
     yearLabel.innerText = currentYear;
   }
 
-  // ✅ slider
+  // slider
   slider.oninput = e => {
     currentYear = parseInt(e.target.value);
     draw();
   };
 
-  // ✅ play
+  // play animation
   playBtn.onclick = function() {
     playing = !playing;
     this.innerText = playing ? "⏸ Pause" : "▶ Play";
@@ -282,24 +278,18 @@ window.addEventListener("load", function () {
     }
   };
 
-  // ✅ filters
-  popeFilter.onchange = e => { pope = e.target.value; draw(); };
-  regionFilter.onchange = e => { region = e.target.value; draw(); };
-
-  // ✅ basemap toggle
+  // basemap toggle
   baseSelect.onchange = function() {
     map.removeLayer(currentBase);
     currentBase = this.value === "dark" ? dark : light;
     map.addLayer(currentBase);
   };
 
-  // ✅ collapsible sidebar
-  const sidebar = document.getElementById("sidebar");
+  // collapsible sidebar
   document.getElementById("toggleSidebar").onclick = function() {
-    sidebar.classList.toggle("collapsed");
+    document.getElementById("sidebar").classList.toggle("collapsed");
   };
 
 });
 </script>
 
-    <div id="controls">
