@@ -2,44 +2,54 @@
 
   <!-- ✅ SIDEBAR -->
   <div id="sidebar">
-    <h3>Controls</h3>
+    <button id="h3>Controls</h3>    <button id="toggleSidebar">☰</button>
 
-    <div class="control-group">
-      <label><b>Time (Year)</b></label><br>
-      <input type="range" id="timeSlider" min="1600" max="1690" step="1" value="1600">
-      <div id="yearLabel">1600</div>
-    </div>
+      <div class="control-group">
+        <label><b>Time (Year)</b></label><br>
+        <input type="range" id="timeSlider" min="1600" max="1690" step="1" value="1600">
+        <div id="yearLabel">1600</div>
+      </div>
 
-    <div class="control-group">
-      <button id="play">▶ Play</button>
-    </div>
+      <div class="control-group">
+        <button id="play">▶ Play</button>
+      </div>
 
-    <div class="control-group">
-      <label><b>Pope</b></label><br>
-      <select id="popeFilter">
-        <option value="all">All</option>
-        <option>Paul V</option>
-        <option>Gregory XV</option>
-        <option>Urban VIII</option>
-        <option>Innocent X</option>
-        <option>Alexander VII</option>
-        <option>Clement IX</option>
-        <option>Clement X</option>
-        <option>Innocent XI</option>
-      </select>
-    </div>
+      <div class="control-group">
+        <label><b>Map Style</b></label><br>
+        <select id="basemap">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
 
-    <div class="control-group">
-      <label><b>Region</b></label><br>
-      <select id="regionFilter">
-        <option value="all">All</option>
-        <option>North Africa</option>
-        <option>Ottoman Core</option>
-        <option>Balkans</option>
-        <option>Anatolia</option>
-        <option>Aegean</option>
-        <option>Levant</option>
-      </select>
+      <div class="control-group">
+        <label><b>Pope</b></label><br>
+        <select id="popeFilter">
+          <option value="all">All</option>
+          <option>Paul V</option>
+          <option>Gregory XV</option>
+          <option>Urban VIII</option>
+          <option>Innocent X</option>
+          <option>Alexander VII</option>
+          <option>Clement IX</option>
+          <option>Clement X</option>
+          <option>Innocent XI</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label><b>Region</b></label><br>
+        <select id="regionFilter">
+          <option value="all">All</option>
+          <option>North Africa</option>
+          <option>Ottoman Core</option>
+          <option>Balkans</option>
+          <option>Anatolia</option>
+          <option>Aegean</option>
+          <option>Levant</option>
+        </select>
+      </div>
+
     </div>
   </div>
 
@@ -48,10 +58,13 @@
 
   <!-- ✅ LEGEND -->
   <div id="legend">
-    <b>Legend</b><br>
-    📍 Center = origin<br>
-    ● Individuals<br>
-    Lines = connections
+    <b>Regions</b><br>
+    <span style="color:#e41a1c">●</span> North Africa<br>
+    <span style="color:#377eb8">●</span> Ottoman Core<br>
+    <span style="color:#4daf4a">●</span> Balkans<br>
+    <span style="color:#984ea3">●</span> Anatolia<br>
+    <span style="color:#ff7f00">●</span> Aegean<br>
+    <span style="color:#ffff33">●</span> Levant
   </div>
 
 </div>
@@ -63,35 +76,55 @@
   height: 700px;
 }
 
-/* ✅ SIDEBAR FIXED + CLEAN */
+/* ✅ sidebar */
 #sidebar {
   position: absolute;
   left: 0;
-  top: 0;
-  width: 220px;
+  width: 240px;
   height: 100%;
   background: white;
-  padding: 15px;
   z-index: 1000;
   box-shadow: 2px 0 6px rgba(0,0,0,0.2);
-  font-size: 14px;
+  transition: width 0.3s;
 }
 
-/* ✅ spacing fix */
+/* collapse */
+#sidebar.collapsed {
+  width: 40px;
+}
+
+#controls {
+  padding: 10px;
+}
+
 .control-group {
   margin-bottom: 15px;
 }
 
-/* ✅ MAP */
+#toggleSidebar {
+  width: 100%;
+  height: 40px;
+  background: #333;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+/* ✅ map */
 #map {
   position: absolute;
-  left: 220px;
+  left: 240px;
   right: 0;
   top: 0;
   bottom: 0;
+  transition: left 0.3s;
 }
 
-/* ✅ LEGEND */
+#sidebar.collapsed + #map {
+  left: 40px;
+}
+
+/* ✅ legend */
 #legend {
   position: absolute;
   bottom: 15px;
@@ -102,15 +135,12 @@
   box-shadow: 0 0 6px rgba(0,0,0,0.2);
 }
 
-/* ✅ inputs full width */
-#sidebar select,
-#sidebar input,
-#sidebar button {
+#sidebar select, #sidebar input, #sidebar button {
   width: 100%;
 }
 </style>
 
-<!-- ✅ LIBRARIES (CORRECT) -->
+<!-- ✅ LIBRARIES -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -119,10 +149,13 @@
 <script>
 window.addEventListener("load", function () {
 
-  const map = L.map('map').setView([38, 20], 4);
+  // ✅ basemaps
+  let light = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+  let dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-    .addTo(map);
+  const map = L.map('map', { layers: [light] }).setView([38, 20], 4);
+
+  let currentBase = light;
 
   let layer = L.layerGroup().addTo(map);
 
@@ -131,12 +164,23 @@ window.addEventListener("load", function () {
   const playBtn = document.getElementById("play");
   const popeFilter = document.getElementById("popeFilter");
   const regionFilter = document.getElementById("regionFilter");
+  const baseSelect = document.getElementById("basemap");
 
   let data = [];
   let currentYear = 1600;
   let pope = "all";
   let region = "all";
   let playing = false;
+
+  // ✅ region colors
+  const colors = {
+    "North Africa": "#e41a1c",
+    "Ottoman Core": "#377eb8",
+    "Balkans": "#4daf4a",
+    "Anatolia": "#984ea3",
+    "Aegean": "#ff7f00",
+    "Levant": "#ffff33"
+  };
 
   Papa.parse(
     "https://raw.githubusercontent.com/emhcais/timeslidermap/main/kepler_radial_layout.csv",
@@ -174,12 +218,13 @@ window.addEventListener("load", function () {
       let lon = parseFloat(group[0].lon);
       let count = group.length;
 
-      // center
+      // ✅ center node (click → zoom)
       let center = L.circleMarker([lat, lon], {
         radius: 6,
-        color: "black",
-        fillOpacity: 1
+        color: "black"
       }).addTo(layer);
+
+      center.on("click", () => map.setView([lat, lon], 6));
 
       center.bindTooltip(`${group[0].origin} (${count})`);
 
@@ -192,22 +237,19 @@ window.addEventListener("load", function () {
         let newLat = lat + radius * Math.cos(angle);
         let newLon = lon + radius * Math.sin(angle);
 
-        // line
         L.polyline([[lat, lon], [newLat, newLon]], {
           color: "#888"
         }).addTo(layer);
 
-        // node
-        let marker = L.circleMarker([newLat, newLon], {
+        L.circleMarker([newLat, newLon], {
           radius: 5,
-          color: "orange"
-        }).addTo(layer);
-
-        marker.bindPopup(
-          `<b>${row.name_original}</b><br>
-           Year: ${row.year}<br>
-           Origin: ${row.origin}`
-        );
+          color: colors[row.region] || "orange",
+          fillOpacity: 0.9
+        }).bindPopup(`
+          <b>${row.name_original}</b><br>
+          Year: ${row.year}<br>
+          Region: ${row.region}
+        `).addTo(layer);
       });
 
     });
@@ -215,11 +257,13 @@ window.addEventListener("load", function () {
     yearLabel.innerText = currentYear;
   }
 
-  slider.oninput = function(e) {
+  // ✅ slider
+  slider.oninput = e => {
     currentYear = parseInt(e.target.value);
     draw();
   };
 
+  // ✅ play
   playBtn.onclick = function() {
     playing = !playing;
     this.innerText = playing ? "⏸ Pause" : "▶ Play";
@@ -238,9 +282,24 @@ window.addEventListener("load", function () {
     }
   };
 
+  // ✅ filters
   popeFilter.onchange = e => { pope = e.target.value; draw(); };
   regionFilter.onchange = e => { region = e.target.value; draw(); };
 
+  // ✅ basemap toggle
+  baseSelect.onchange = function() {
+    map.removeLayer(currentBase);
+    currentBase = this.value === "dark" ? dark : light;
+    map.addLayer(currentBase);
+  };
+
+  // ✅ collapsible sidebar
+  const sidebar = document.getElementById("sidebar");
+  document.getElementById("toggleSidebar").onclick = function() {
+    sidebar.classList.toggle("collapsed");
+  };
+
 });
 </script>
-``
+
+    <div id="controls">
