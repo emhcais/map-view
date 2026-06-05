@@ -1,13 +1,13 @@
 <div id="app">
 
-  <!-- ✅ TOP COLLAPSIBLE SIDEBAR -->
+  <!-- ✅ TOP CONTROL BAR -->
   <div id="sidebar">
     <button id="toggleSidebar">☰ Controls</button>
 
     <div id="controls">
 
       <div class="control-group">
-        <label><b>Time (Year)</b></label>
+        <label><b>Time</b></label>
         <input type="range" id="timeSlider" min="1600" max="1690" value="1600">
         <div id="yearLabel">1600</div>
       </div>
@@ -16,7 +16,6 @@
         <button id="play">▶ Play</button>
       </div>
 
-      <!-- ✅ Pope selector -->
       <div class="control-group">
         <label><b>Pope</b></label>
         <select id="popeFilter">
@@ -32,7 +31,6 @@
         </select>
       </div>
 
-      <!-- ✅ Region selector -->
       <div class="control-group">
         <label><b>Region</b></label>
         <select id="regionFilter">
@@ -46,7 +44,6 @@
         </select>
       </div>
 
-      <!-- ✅ Location selector -->
       <div class="control-group">
         <label><b>Location</b></label>
         <select id="locationFilter">
@@ -57,22 +54,14 @@
     </div>
   </div>
 
-  <!-- ✅ MAP -->
   <div id="map"></div>
-
-  <!-- ✅ FIXED LEGEND -->
   <div id="legend"></div>
 
 </div>
 
 <style>
-#app {
-  position: relative;
-  width: 100%;
-  height: 700px;
-}
+#app { position: relative; width: 100%; height: 700px; }
 
-/* ✅ TOP BAR STYLE */
 #sidebar {
   position: absolute;
   top: 0;
@@ -83,18 +72,10 @@
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
-/* ✅ collapse */
-#controls {
-  padding: 10px;
-}
+#controls { padding: 10px; }
+#sidebar.collapsed #controls { display: none; }
 
-#sidebar.collapsed #controls {
-  display: none;
-}
-
-.control-group {
-  margin-bottom: 10px;
-}
+.control-group { margin-bottom: 10px; }
 
 #toggleSidebar {
   width: 100%;
@@ -105,7 +86,6 @@
   cursor: pointer;
 }
 
-/* ✅ MAP BELOW TOP BAR */
 #map {
   position: absolute;
   top: 40px;
@@ -114,7 +94,6 @@
   bottom: 0;
 }
 
-/* ✅ LEGEND FIXED */
 #legend {
   position: absolute;
   bottom: 10px;
@@ -125,11 +104,7 @@
   box-shadow: 0 0 6px rgba(0,0,0,0.2);
   max-height: 200px;
   overflow-y: auto;
-  z-index: 1001; /* ✅ ensures always on top */
-}
-
-#legend div {
-  margin-bottom: 4px;
+  z-index: 1001;
 }
 </style>
 
@@ -140,7 +115,10 @@
 <script>
 window.addEventListener("load", function () {
 
-  const map = L.map('map').setView([38, 20], 4);
+  // ✅ MAP WITH ZOOM TOP RIGHT
+  const map = L.map('map', { zoomControl: false }).setView([38, 20], 4);
+
+  L.control.zoom({ position: 'topright' }).addTo(map);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
     .addTo(map);
@@ -150,6 +128,7 @@ window.addEventListener("load", function () {
   const slider = document.getElementById("timeSlider");
   const yearLabel = document.getElementById("yearLabel");
   const playBtn = document.getElementById("play");
+
   const popeFilter = document.getElementById("popeFilter");
   const regionFilter = document.getElementById("regionFilter");
   const locationFilter = document.getElementById("locationFilter");
@@ -159,17 +138,17 @@ window.addEventListener("load", function () {
   let currentYear = 1600;
   let pope = "all";
   let region = "all";
-  let selectedLocation = "all";
+  let locationSel = "all";
   let playing = false;
 
-  let locationColors = {};
+  let colors = {};
 
   function getColor(loc) {
-    if (!locationColors[loc]) {
-      let index = Object.keys(locationColors).length;
-      locationColors[loc] = `hsl(${index * 40}, 70%, 50%)`;
+    if (!colors[loc]) {
+      let i = Object.keys(colors).length;
+      colors[loc] = `hsl(${i * 40}, 70%, 50%)`;
     }
-    return locationColors[loc];
+    return colors[loc];
   }
 
   Papa.parse(
@@ -177,15 +156,14 @@ window.addEventListener("load", function () {
     {
       download: true,
       header: true,
-      skipEmptyLines: true,
       complete: function(results) {
         data = results.data;
 
-        let locations = [...new Set(data.map(d => d.origin))].sort();
-        locations.forEach(loc => {
+        let locs = [...new Set(data.map(d => d.origin))].sort();
+        locs.forEach(l => {
           let opt = document.createElement("option");
-          opt.value = loc;
-          opt.textContent = loc;
+          opt.value = l;
+          opt.textContent = l;
           locationFilter.appendChild(opt);
         });
 
@@ -206,7 +184,7 @@ window.addEventListener("load", function () {
 
       if (pope !== "all" && row.pope !== pope) return;
       if (region !== "all" && row.region !== region) return;
-      if (selectedLocation !== "all" && row.origin !== selectedLocation) return;
+      if (locationSel !== "all" && row.origin !== locationSel) return;
 
       if (!groups[row.origin]) groups[row.origin] = [];
       groups[row.origin].push(row);
@@ -238,35 +216,35 @@ window.addEventListener("load", function () {
         let newLat = lat + radius * Math.cos(angle);
         let newLon = lon + radius * Math.sin(angle);
 
-        L.polyline([[lat, lon], [newLat, newLon]], {
-          color: color
-        }).addTo(layer);
+        L.polyline([[lat, lon],[newLat,newLon]], { color: color }).addTo(layer);
 
-        let marker = L.circleMarker([newLat, newLon], {
+        let marker = L.circleMarker([newLat,newLon], {
           radius: 5,
           color: color
         }).addTo(layer);
 
+        // ✅ FULL POPUP
         marker.bindPopup(`
-          <b>${row.name_original}</b><br>
-          Baptismal: ${row.name_baptismal}<br>
-          Year: ${row.year}<br>
-          Pope: ${row.pope}<br>
-          Origin: ${row.origin}<br>
-          Region: ${row.region}
+          <b>Name:</b> ${row.name_original || "N/A"}<br>
+          <b>Baptismal Name:</b> ${row.name_baptismal || "N/A"}<br>
+          <b>Pope:</b> ${row.pope || "N/A"}<br>
+          <b>Year:</b> ${row.year || "N/A"}<br>
+          <b>Location:</b> ${row.origin || "N/A"}<br>
+          <b>Region:</b> ${row.region || "N/A"}
         `);
 
-        marker.on("click", () => map.setView([newLat, newLon], 7));
+        marker.on("click", () => map.setView([newLat,newLon], 7));
       });
     });
 
-    yearLabel.innerText = currentYear;
+    let decade = Math.floor(currentYear / 10) * 10;
+    yearLabel.innerText = `${currentYear} (${decade}s)`;
   }
 
   slider.oninput = e => { currentYear = +e.target.value; draw(); };
   popeFilter.onchange = e => { pope = e.target.value; draw(); };
   regionFilter.onchange = e => { region = e.target.value; draw(); };
-  locationFilter.onchange = e => { selectedLocation = e.target.value; draw(); };
+  locationFilter.onchange = e => { locationSel = e.target.value; draw(); };
 
   playBtn.onclick = function() {
     playing = !playing;
