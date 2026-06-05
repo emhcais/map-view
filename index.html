@@ -1,12 +1,12 @@
 <div id="app">
 
-  <!-- SIDEB="toggleSidebar">☰</button>  <!-- SIDEBAR -->
-
-    <div id="controls">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+controls">    <button id="toggleSidebar">☰</button>
       <h3>Controls</h3>
 
       <div class="control-group">
-        <label><b>Time (Year)</b></label>
+        <label><b>Time (Year)</b></label><br>
         <input type="range" id="timeSlider" min="1600" max="1690" value="1600">
         <div id="yearLabel">1600</div>
       </div>
@@ -15,7 +15,7 @@
         <button id="play">▶ Play</button>
       </div>
 
-      <!-- ✅ LOCATION SELECTOR -->
+      <!-- ✅ LOCATION SELECTOR (NEW) -->
       <div class="control-group">
         <label><b>Location</b></label>
         <select id="locationFilter">
@@ -30,13 +30,13 @@
           <option value="dark">Dark</option>
         </select>
       </div>
-
     </div>
   </div>
 
+  <!-- MAP -->
   <div id="map"></div>
 
-  <!-- ✅ DYNAMIC LEGEND -->
+  <!-- ✅ LEGEND (NOW LOCATION-BASED) -->
   <div id="legend"></div>
 
 </div>
@@ -79,6 +79,7 @@
   top: 0;
   bottom: 0;
 }
+
 #sidebar.collapsed + #map { left: 40px; }
 
 #legend {
@@ -88,12 +89,16 @@
   background: white;
   padding: 10px;
   font-size: 12px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.2);
   max-height: 200px;
   overflow-y: auto;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
 }
 
 #legend div { margin-bottom: 4px; }
+
+#sidebar select, #sidebar input, #sidebar button {
+  width: 100%;
+}
 </style>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -116,19 +121,19 @@ window.addEventListener("load", function () {
   const playBtn = document.getElementById("play");
   const baseSelect = document.getElementById("basemap");
   const locationFilter = document.getElementById("locationFilter");
-  const legend = document.getElementById("legend");
 
   let data = [];
   let currentYear = 1600;
   let playing = false;
   let selectedLocation = "all";
 
+  // ✅ LOCATION COLOR SYSTEM
   let locationColors = {};
 
   function getColor(location) {
     if (!locationColors[location]) {
-      let hue = Object.keys(locationColors).length * 40;
-      locationColors[location] = `hsl(${hue}, 70%, 50%)`;
+      let index = Object.keys(locationColors).length;
+      locationColors[location] = `hsl(${index * 40}, 70%, 50%)`;
     }
     return locationColors[location];
   }
@@ -142,7 +147,7 @@ window.addEventListener("load", function () {
       complete: function(results) {
         data = results.data;
 
-        // ✅ populate dropdown
+        // ✅ populate location dropdown
         let locations = [...new Set(data.map(d => d.origin))].sort();
         locations.forEach(loc => {
           let opt = document.createElement("option");
@@ -158,14 +163,17 @@ window.addEventListener("load", function () {
 
   function draw() {
     layer.clearLayers();
+
+    let legend = document.getElementById("legend");
     legend.innerHTML = "<b>Locations</b><br>";
 
     let groups = {};
 
     data.forEach(row => {
-      let year = parseInt(row.year);
-      if (isNaN(year) || year > currentYear) return;
+      let yr = parseInt(row.year);
+      if (isNaN(yr) || yr > currentYear) return;
 
+      // ✅ location filter
       if (selectedLocation !== "all" && row.origin !== selectedLocation) return;
 
       if (!groups[row.origin]) groups[row.origin] = [];
@@ -178,7 +186,7 @@ window.addEventListener("load", function () {
       let lon = parseFloat(group[0].lon);
       let color = getColor(origin);
 
-      // ✅ LEGEND ENTRY
+      // ✅ legend entry
       legend.innerHTML += `<div><span style="color:${color}">●</span> ${origin}</div>`;
 
       let center = L.circleMarker([lat, lon], {
@@ -186,8 +194,7 @@ window.addEventListener("load", function () {
         color: color
       }).addTo(layer);
 
-      center.bindTooltip(`${origin} (${group.length})`);
-
+      center.bindTooltip(origin + " (" + group.length + ")");
       center.on("click", () => map.setView([lat, lon], 6));
 
       let n = group.length;
@@ -201,15 +208,15 @@ window.addEventListener("load", function () {
         let newLon = lon + radius * Math.sin(angle);
 
         L.polyline([[lat, lon], [newLat, newLon]], {
-          color: color,
-          weight: 1
-        }).addTo(layer);
-
-        let marker = L.circleMarker([newLat, newLon], {
-          radius: 6,
           color: color
         }).addTo(layer);
 
+        let marker = L.circleMarker([newLat, newLon], {
+          radius: 5,
+          color: color
+        }).addTo(layer);
+
+        // ✅ FULL POPUP (unchanged)
         marker.bindPopup(`
           <b>${row.name_original}</b><br>
           Baptismal Name: ${row.name_baptismal}<br>
@@ -227,7 +234,11 @@ window.addEventListener("load", function () {
   }
 
   slider.oninput = e => { currentYear = +e.target.value; draw(); };
-  locationFilter.onchange = e => { selectedLocation = e.target.value; draw(); };
+
+  locationFilter.onchange = e => {
+    selectedLocation = e.target.value;
+    draw();
+  };
 
   playBtn.onclick = function() {
     playing = !playing;
@@ -258,4 +269,4 @@ window.addEventListener("load", function () {
 
 });
 </script>
-  <div id="sidebar">
+
