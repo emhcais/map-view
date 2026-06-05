@@ -1,10 +1,10 @@
-<div id="app">
-
-  <!-- ✅ TOP CONTROL BAR -->
+<div id="app"><div <!-- ✅ LEFT SIDEBAR -->
   <div id="sidebar">
-    <button id="toggleSidebar">☰ Controls</button>
+    <button id="toggleSidebar">☰</button>
 
     <div id="controls">
+
+      <h3>Controls</h3>
 
       <div class="control-group">
         <label><b>Time</b></label>
@@ -51,6 +51,16 @@
         </select>
       </div>
 
+      <!-- ✅ MAP SELECTOR -->
+      <div class="control-group">
+        <label><b>Map Style</b></label>
+        <select id="basemap">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="arabic">Arabic Labels</option>
+        </select>
+      </div>
+
     </div>
   </div>
 
@@ -62,20 +72,26 @@
 <style>
 #app { position: relative; width: 100%; height: 700px; }
 
+/* ✅ LEFT SIDEBAR */
 #sidebar {
   position: absolute;
-  top: 0;
   left: 0;
-  right: 0;
+  top: 0;
+  width: 260px;
+  height: 100%;
   background: white;
   z-index: 1000;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 2px 0 6px rgba(0,0,0,0.2);
+  transition: width 0.3s;
+  overflow: hidden;
 }
 
-#controls { padding: 10px; }
+#sidebar.collapsed { width: 40px; }
 #sidebar.collapsed #controls { display: none; }
 
-.control-group { margin-bottom: 10px; }
+#controls { padding: 10px; }
+
+.control-group { margin-bottom: 12px; }
 
 #toggleSidebar {
   width: 100%;
@@ -86,18 +102,25 @@
   cursor: pointer;
 }
 
+/* ✅ MAP */
 #map {
   position: absolute;
-  top: 40px;
-  left: 0;
+  left: 260px;
   right: 0;
+  top: 0;
   bottom: 0;
+  transition: left 0.3s;
 }
 
+#sidebar.collapsed + #map {
+  left: 40px;
+}
+
+/* ✅ LEGEND */
 #legend {
   position: absolute;
-  bottom: 10px;
-  right: 10px;
+  bottom: 12px;
+  right: 12px;
   background: white;
   padding: 10px;
   font-size: 12px;
@@ -105,6 +128,10 @@
   max-height: 200px;
   overflow-y: auto;
   z-index: 1001;
+}
+
+#sidebar select, #sidebar input, #sidebar button {
+  width: 100%;
 }
 </style>
 
@@ -115,13 +142,18 @@
 <script>
 window.addEventListener("load", function () {
 
-  // ✅ MAP WITH ZOOM TOP RIGHT
-  const map = L.map('map', { zoomControl: false }).setView([38, 20], 4);
+  // ✅ BASEMAPS
+  let light = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+  let dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png');
+
+  // ✅ Arabic-friendly map (labels emphasized)
+  let arabic = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png');
+
+  const map = L.map('map', { zoomControl: false, layers: [light] }).setView([38,20],4);
 
   L.control.zoom({ position: 'topright' }).addTo(map);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-    .addTo(map);
+  let currentBase = light;
 
   let layer = L.layerGroup().addTo(map);
 
@@ -132,6 +164,8 @@ window.addEventListener("load", function () {
   const popeFilter = document.getElementById("popeFilter");
   const regionFilter = document.getElementById("regionFilter");
   const locationFilter = document.getElementById("locationFilter");
+  const baseSelect = document.getElementById("basemap");
+
   const legend = document.getElementById("legend");
 
   let data = [];
@@ -143,54 +177,51 @@ window.addEventListener("load", function () {
 
   let colors = {};
 
-  function getColor(loc) {
-    if (!colors[loc]) {
+  function getColor(loc){
+    if(!colors[loc]){
       let i = Object.keys(colors).length;
-      colors[loc] = `hsl(${i * 40}, 70%, 50%)`;
+      colors[loc] = `hsl(${i*40},70%,50%)`;
     }
     return colors[loc];
   }
 
-  Papa.parse(
-    "https://raw.githubusercontent.com/emhcais/timeslidermap/main/kepler_radial_layout.csv",
-    {
-      download: true,
-      header: true,
-      complete: function(results) {
-        data = results.data;
+  Papa.parse("https://raw.githubusercontent.com/emhcais/timeslidermap/main/kepler_radial_layout.csv", {
+    download: true,
+    header: true,
+    complete: function(results){
+      data = results.data;
 
-        let locs = [...new Set(data.map(d => d.origin))].sort();
-        locs.forEach(l => {
-          let opt = document.createElement("option");
-          opt.value = l;
-          opt.textContent = l;
-          locationFilter.appendChild(opt);
-        });
+      let locs = [...new Set(data.map(d => d.origin))].sort();
+      locs.forEach(l=>{
+        let opt = document.createElement("option");
+        opt.value = l;
+        opt.textContent = l;
+        locationFilter.appendChild(opt);
+      });
 
-        draw();
-      }
+      draw();
     }
-  );
+  });
 
-  function draw() {
+  function draw(){
     layer.clearLayers();
     legend.innerHTML = "<b>Locations</b><br>";
 
     let groups = {};
 
-    data.forEach(row => {
+    data.forEach(row=>{
       let yr = parseInt(row.year);
-      if (isNaN(yr) || yr > currentYear) return;
+      if(isNaN(yr) || yr > currentYear) return;
 
-      if (pope !== "all" && row.pope !== pope) return;
-      if (region !== "all" && row.region !== region) return;
-      if (locationSel !== "all" && row.origin !== locationSel) return;
+      if(pope!=="all" && row.pope!==pope) return;
+      if(region!=="all" && row.region!==region) return;
+      if(locationSel!=="all" && row.origin!==locationSel) return;
 
-      if (!groups[row.origin]) groups[row.origin] = [];
+      if(!groups[row.origin]) groups[row.origin] = [];
       groups[row.origin].push(row);
     });
 
-    Object.entries(groups).forEach(([origin, group]) => {
+    Object.entries(groups).forEach(([origin,group])=>{
 
       let lat = parseFloat(group[0].lat);
       let lon = parseFloat(group[0].lon);
@@ -198,32 +229,28 @@ window.addEventListener("load", function () {
 
       legend.innerHTML += `<div><span style="color:${color}">●</span> ${origin}</div>`;
 
-      let center = L.circleMarker([lat, lon], {
-        radius: 6,
-        color: color
+      let center = L.circleMarker([lat,lon],{
+        radius:6,color:color
       }).addTo(layer);
 
-      center.bindTooltip(origin + " (" + group.length + ")");
-      center.on("click", () => map.setView([lat, lon], 6));
+      center.bindTooltip(origin+" ("+group.length+")");
+      center.on("click",()=>map.setView([lat,lon],6));
 
       let n = group.length;
       let radius = 0.3;
 
-      group.forEach((row, i) => {
+      group.forEach((row,i)=>{
+        let angle = (2*Math.PI*i)/n;
 
-        let angle = (2 * Math.PI * i) / n;
+        let newLat = lat + radius*Math.cos(angle);
+        let newLon = lon + radius*Math.sin(angle);
 
-        let newLat = lat + radius * Math.cos(angle);
-        let newLon = lon + radius * Math.sin(angle);
+        L.polyline([[lat,lon],[newLat,newLon]],{color:color}).addTo(layer);
 
-        L.polyline([[lat, lon],[newLat,newLon]], { color: color }).addTo(layer);
-
-        let marker = L.circleMarker([newLat,newLon], {
-          radius: 5,
-          color: color
+        let marker = L.circleMarker([newLat,newLon],{
+          radius:5,color:color
         }).addTo(layer);
 
-        // ✅ FULL POPUP
         marker.bindPopup(`
           <b>Name:</b> ${row.name_original || "N/A"}<br>
           <b>Baptismal Name:</b> ${row.name_baptismal || "N/A"}<br>
@@ -233,11 +260,11 @@ window.addEventListener("load", function () {
           <b>Region:</b> ${row.region || "N/A"}
         `);
 
-        marker.on("click", () => map.setView([newLat,newLon], 7));
+        marker.on("click",()=>map.setView([newLat,newLon],7));
       });
     });
 
-    let decade = Math.floor(currentYear / 10) * 10;
+    let decade = Math.floor(currentYear/10)*10;
     yearLabel.innerText = `${currentYear} (${decade}s)`;
   }
 
@@ -246,26 +273,37 @@ window.addEventListener("load", function () {
   regionFilter.onchange = e => { region = e.target.value; draw(); };
   locationFilter.onchange = e => { locationSel = e.target.value; draw(); };
 
-  playBtn.onclick = function() {
+  baseSelect.onchange = function(){
+    map.removeLayer(currentBase);
+
+    if(this.value==="dark") currentBase = dark;
+    else if(this.value==="arabic") currentBase = arabic;
+    else currentBase = light;
+
+    map.addLayer(currentBase);
+  };
+
+  playBtn.onclick = function(){
     playing = !playing;
     this.innerText = playing ? "⏸ Pause" : "▶ Play";
 
-    if (playing) {
-      let i = setInterval(() => {
-        if (!playing) return clearInterval(i);
+    if(playing){
+      let i=setInterval(()=>{
+        if(!playing) return clearInterval(i);
 
         currentYear++;
-        if (currentYear > 1690) currentYear = 1600;
+        if(currentYear>1690) currentYear = 1600;
 
         slider.value = currentYear;
         draw();
-      }, 600);
+      },600);
     }
   };
 
-  document.getElementById("toggleSidebar").onclick = function() {
+  document.getElementById("toggleSidebar").onclick = function(){
     document.getElementById("sidebar").classList.toggle("collapsed");
   };
 
 });
 </script>
+
