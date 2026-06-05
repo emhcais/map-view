@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Leaflet Map Test</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+#app {
+  position: relative;
+  width: 100%;
+  height: 700px;
+}
+
+#sidebar {
+  position: absolute;
+  left: 0;
+  width: 200px;
+  height: 100%;
+  background: white;
+  padding: 10px;
+  z-index: 1000;
+}
+
+#map {
+  position: absolute;
+  left: 200px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+  <div id="sidebar">
+    <h3>Controls</h3>
+
+    <label><b>Time</b></label>
+    <input type="range" id="slider" min="1600" max="1690" value="1600">
+    <div id="label">1600</div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+const map = L.map('map').setView([38, 20], 4);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+let layer = L.layerGroup().addTo(map);
+
+let currentYear = 1600;
+let data = [];
+
+const slider = document.getElementById("slider");
+const label = document.getElementById("label");
+
+Papa.parse(
+  "https://raw.githubusercontent.com/emhcais/timeslidermap/refs/heads/main/kepler_radial_layout.csv",
+  {
+    download: true,
+    header: true,
+    complete: function(results) {
+      data = results.data;
+      draw();
+    }
+  }
+);
+
+function draw() {
+  layer.clearLayers();
+
+  let groups = {};
+
+  data.forEach(row => {
+    let year = parseInt(row.year);
+    if (isNaN(year) || year > currentYear) return;
+
+    if (!groups[row.origin]) groups[row.origin] = [];
+    groups[row.origin].push(row);
+  });
+
+  Object.values(groups).forEach(group => {
+
+    let lat = parseFloat(group[0].lat);
+    let lon = parseFloat(group[0].lon);
+
+    let center = L.circleMarker([lat, lon], {
+      radius: 6,
+      color: "black"
+    }).addTo(layer);
+
+    center.bindTooltip(group[0].origin + " (" + group.length + ")");
+
+    let radius = 0.3;
+    let n = group.length;
+
+    group.forEach((row, i) => {
+
+      let angle = (2 * Math.PI * i) / n;
+
+      let newLat = lat + radius * Math.cos(angle);
+      let newLon = lon + radius * Math.sin(angle);
+
+      L.polyline([[lat, lon], [newLat, newLon]], {
+        color: "#888"
+      }).addTo(layer);
+
+      let marker = L.circleMarker([newLat, newLon], {
+        radius: 5,
+        color: "orange"
+      }).addTo(layer);
+
+      marker.bindPopup(row.name_original + "<br>" + row.year);
+    });
+  });
+
+  label.innerText = currentYear;
+}
+
+slider.addEventListener("input", function(e){
+  currentYear = parseInt(e.target.value);
+  draw();
+});
+</script>
+
+</body>
+</html>
