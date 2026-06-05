@@ -1,3 +1,4 @@
+
 <div id="app">
 
   <!-- SIDEBAR -->
@@ -155,9 +156,9 @@ window.addEventListener("load", function () {
   let layer = L.layerGroup().addTo(map);
 
   const icon = L.icon({
-    iconUrl:"https://cdn-icons-png.flaticon.com/512/4856/4856582.png",
-    iconSize:[42,42],
-    iconAnchor:[8,8]
+    iconUrl:"https://cdn-icons-png.flaticon.com/512/684/684908.png",
+    iconSize:[22,22],
+    iconAnchor:[11,11]
   });
 
   let data = [];
@@ -224,7 +225,7 @@ window.addEventListener("load", function () {
       let center = L.marker([lat,lon],{icon:icon}).addTo(layer)
         .bindTooltip(origin+" ("+group.length+")");
 
-      center.on("click",()=>map.setView([lat,lon],7));
+      center.on("click",()=>map.setView([lat,lon],6));
 
       let n=group.length;
       let radius=0.5;
@@ -250,7 +251,7 @@ window.addEventListener("load", function () {
           <b>Region:</b> ${row.region || "N/A"}
         `);
 
-        m.on("click",()=>map.setView([newLat,newLon],10));
+        m.on("click",()=>map.setView([newLat,newLon],7));
       });
     });
 
