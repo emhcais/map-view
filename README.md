@@ -306,12 +306,3 @@ So you can:
 
 ***
 
-# ✅ ✅ IF YOU WANT
-
-I can also convert this into:
-
-* ✅ a **graded assignment prompt for students**
-* ✅ a **methods section for a paper**
-* ✅ a **technical appendix**
-
-Just tell me 👍
